@@ -10,3 +10,4 @@ dataset: Market
 lr: !!python/float 1e-2
 lr_strategy: resnet_style
 wd: !!python/float 1e-2
+record_grad: true

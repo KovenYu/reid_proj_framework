@@ -85,7 +85,21 @@ class ReidTrainer(Trainer):
             imgs = train_tuple[0].cuda()
             labels = train_tuple[1].cuda()
 
-            stats = self.update_net(imgs, labels)
+            predictions = self.net(imgs)[1]
+            loss = self.cls_loss(predictions, labels)
+            acc = compute_accuracy(predictions, labels)
+
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+
+            if i == 0 and self.args.record_grad:
+                name = 'conv1.weight'
+                param = self.net.conv1.weight
+                self.recorder.add_histogram(name+'_grad', param.grad, epoch, bins='auto')
+
+            stats = {'acc/r1': acc,
+                     'loss_cls': loss.item()}
             for k, v in stats.items():
                 meters_trn[k].update(v, self.args.batch_size)
 
@@ -104,19 +118,6 @@ class ReidTrainer(Trainer):
         self.logger.print_log('  **Test**  ' + create_stat_string(meters_val))
 
         save_checkpoint(self, epoch, os.path.join(self.args.save_path, "checkpoints", "{:0>2d}.pth").format(epoch))
-
-    def update_net(self, imgs, labels):
-        predictions = self.net(imgs)[1]
-        loss = self.cls_loss(predictions, labels)
-
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-        acc = compute_accuracy(predictions, labels)
-        stats = {'acc/r1': acc,
-                 'loss_cls': loss.item()}
-        return stats
 
     def eval_performance(self, gallery_loader, probe_loader):
         stats = ('acc/r1', 'mAP')

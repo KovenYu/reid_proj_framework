@@ -6,7 +6,6 @@ import torch
 import argparse
 import torchvision.transforms as transforms
 matplotlib.use('agg')
-import matplotlib.pyplot as plt
 from ReIDdatasets import FullTraining, Market
 import torch.cuda as cutorch
 import yaml
