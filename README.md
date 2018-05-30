@@ -6,7 +6,7 @@ which is effectively a standard image classification network,
 where the classes are person identities.
 
 #### environment
-- python 3.6, pytorch 0.4.0, cuda 8, matlab
+- python 3.6, pytorch 0.4.0, cuda 8, matlab, [tensorboard-pytorch](https://github.com/lanpa/tensorboard-pytorch)
 - assuming you have a gpu (code is not device adaptive), running on a linux server
 
 #### data
