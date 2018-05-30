@@ -1,0 +1,1 @@
+python src/main.py --gpu $1 --save_path $2

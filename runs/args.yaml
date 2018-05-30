@@ -1,0 +1,12 @@
+## Base options
+epochs: 40
+batch_size: 32
+print_freq: 100
+pretrain_path: data/resnet50-19c8e357.pth
+img_size: !!python/tuple [224, 224]
+crop_size: !!python/tuple [224, 224]
+padding: 7
+dataset: Market
+lr: !!python/float 1e-2
+lr_strategy: resnet_style
+wd: !!python/float 1e-2
