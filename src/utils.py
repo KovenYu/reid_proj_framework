@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from ReIDdatasets import FullTraining, Market
 import torch.cuda as cutorch
 import yaml
+from tensorboardX import SummaryWriter
 
 
 class BaseOptions(object):
@@ -370,14 +371,19 @@ def reset_state_dict(state_dict, model, *fixed_layers):
     return state_dict
 
 
-def save_checkpoint(trainer, epoch, save_path, is_best):
+def save_checkpoint(trainer, epoch, save_path, is_best=False):
     logger = trainer.logger
+    recorder = trainer.recorder
     trainer.logger = None
+    trainer.recorder = None
+    if not os.path.isdir(os.path.dirname(save_path)):
+        os.mkdir(os.path.dirname(save_path))
     torch.save((trainer, epoch), save_path)
     if is_best:
         best_path = save_path + '.best'
         torch.save((trainer, epoch), best_path)
     trainer.logger = logger
+    trainer.recorder = recorder
 
 
 def load_checkpoint(args, logger):
@@ -393,6 +399,7 @@ def load_checkpoint(args, logger):
     logger.print_log("=> loading checkpoint '{}'".format(load_path))
     (trainer, epoch) = torch.load(load_path)
     trainer.logger = logger
+    trainer.recorder = SummaryWriter(os.path.join(args.save_path, 'tb_logs'))
 
     old_args = trainer.args
     trainer.args = args

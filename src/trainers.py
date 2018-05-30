@@ -3,6 +3,7 @@ from utils import *
 import torch.nn as nn
 import torch
 import os
+from tensorboardX import SummaryWriter
 from scipy.spatial.distance import cdist
 
 
@@ -69,15 +70,13 @@ class ReidTrainer(Trainer):
         self.optimizer = torch.optim.SGD([{'params': bn_params, 'weight_decay': 0},
                                          {'params': other_params}], lr=args.lr, momentum=0.9, weight_decay=args.wd)
 
-        recording_stats = ('acc/r1', 'mAP', 'loss_cls')
-        self.recorder = Recorder(args.epochs, recording_stats)
-        logger.print_log('recorder: observing stats: {}'.format(recording_stats))
+        self.recorder = SummaryWriter(os.path.join(args.save_path, 'tb_logs'))
 
     def train_epoch(self, train_loader, gallery_loader, probe_loader, epoch):
         adjust_learning_rate(self.optimizer, (self.args.lr,), epoch, self.args.epochs, self.args.lr_strategy)
 
         batch_time_meter = AverageMeter()
-        stats = self.recorder.recording_stats
+        stats = ('acc/r1', 'loss_cls')
         meters_trn = {stat: AverageMeter() for stat in stats}
         self.train()
 
@@ -97,15 +96,14 @@ class ReidTrainer(Trainer):
                 self.logger.print_log('  Iter: [{:03d}/{:03d}]   Freq {:.1f}   '.format(
                     i, len(train_loader), freq) + create_stat_string(meters_trn) + time_string())
 
-        self.recorder.update(epoch=epoch, is_train=True, meters=meters_trn)
-        self.logger.print_log('  **Train**  ' + create_stat_string(meters_trn))
-
         meters_val = self.eval_performance(gallery_loader, probe_loader)
-        is_best = self.recorder.update(epoch=epoch, is_train=False, meters=meters_val)
+        self.recorder.add_scalars("stats/acc_r1", {'train_acc': meters_trn['acc/r1'].avg,
+                                                   'eval_r1': meters_val['acc/r1'].avg}, epoch)
+        self.recorder.add_scalar("loss/loss_cls", meters_trn['loss_cls'].avg, epoch)
+        self.logger.print_log('  **Train**  ' + create_stat_string(meters_trn))
         self.logger.print_log('  **Test**  ' + create_stat_string(meters_val))
 
-        self.recorder.plot_curve(os.path.join(self.args.save_path, 'learning_curve.png'))
-        save_checkpoint(self, epoch, os.path.join(self.args.save_path, "checkpoint.pth.tar"), is_best=is_best)
+        save_checkpoint(self, epoch, os.path.join(self.args.save_path, "checkpoints", "{:0>2d}.pth").format(epoch))
 
     def update_net(self, imgs, labels):
         predictions = self.net(imgs)[1]
@@ -121,7 +119,7 @@ class ReidTrainer(Trainer):
         return stats
 
     def eval_performance(self, gallery_loader, probe_loader):
-        stats = self.recorder.recording_stats
+        stats = ('acc/r1', 'mAP')
         meters_val = {stat: AverageMeter() for stat in stats}
         self.eval()
 
