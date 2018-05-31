@@ -12,7 +12,7 @@ where the classes are person identities.
 #### data
 - run ./data/make_imdb_Duke.m and ./data/make_imdb_Market.m in MATLAB to organize the datasets.
 don't forget to replace the *dir_path* with yours, which should contain the original dataset.
-- download the pretrained model parameter from https://download.pytorch.org/models/resnet50-19c8e357.pth
+- [optionally] download the pretrained model parameter from https://download.pytorch.org/models/resnet50-19c8e357.pth
 and put it into ./data/
 - if still any problem, please contact me for the wrapped data.
 - tip: in practice you don't wanna debug with a full dataset due to loading time consuming.
@@ -21,7 +21,7 @@ run data/make_imdb_Market_debug.m for a mini version to speed up testing and deb
 #### running
 - if you run on gpu 0, type
 ```bash
-run.sh 0 runs
+python src/main.py --gpu 0 --save_path runs
 ```
 the second argument is the save_path where you wanna save logs and checkpoints.
 note that you should put in save_path a setting file args.yaml,
