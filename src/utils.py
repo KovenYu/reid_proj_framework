@@ -44,6 +44,7 @@ class BaseOptions(object):
                 logger.print_log(string)
                 string = ''
         logger.print_log("".center(120, '-'))
+        logger.print_log("")
 
 
 class Logger(object):
@@ -479,11 +480,11 @@ def get_reid_dataloaders(args):
     return train_loader, gallery_loader, probe_loader
 
 
-def base_option_test():
+def test():
     opts = BaseOptions()
     args = opts.parse()
     print(args)
 
 
 if __name__ == '__main__':
-    base_option_test()
+    test()

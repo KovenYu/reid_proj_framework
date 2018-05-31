@@ -58,14 +58,16 @@ class ReidTrainer(Trainer):
         self.logger = logger
 
         self.net = resnet50(pretrained=False, num_classes=num_classes).cuda()
-        if os.path.isfile(args.pretrain_path):
+        if args.pretrain_path is None:
+            self.logger.print_log('do not use pre-trained model. train from scratch.')
+        elif os.path.isfile(args.pretrain_path):
             checkpoint = torch.load(args.pretrain_path)
             fixed_layers = ('fc',)
             state_dict = reset_state_dict(checkpoint, self.net, *fixed_layers)
             self.net.load_state_dict(state_dict)
-            self.logger.print_log('loaded pre-trained feature net')
+            self.logger.print_log('loaded pre-trained model from {}'.format(args.pretrain_path))
         else:
-            self.logger.print_log('pretrain_path is not found. train from scratch.')
+            self.logger.print_log('{} is not a file. train from scratch.'.format(args.pretrain_path))
 
         self.cls_loss = nn.CrossEntropyLoss().cuda()
 

@@ -2,7 +2,7 @@
 epochs: 40
 batch_size: 32
 print_freq: 100
-pretrain_path: data/resnet50-19c8e357.pth
+pretrain_path: data/resnet50-19c8e357.pth  # specify "null" if do not use pretrained weights
 img_size: !!python/tuple [224, 224]
 crop_size: !!python/tuple [224, 224]
 padding: 7
