@@ -1,5 +1,5 @@
-from .resnet import resnet50
-from .utils import *
+from resnet import resnet50
+from utils import *
 import torch.nn as nn
 import torch
 import os

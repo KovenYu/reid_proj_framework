@@ -6,7 +6,7 @@ import torch
 import argparse
 import torchvision.transforms as transforms
 matplotlib.use('agg')
-from .ReIDdatasets import FullTraining, Market
+from ReIDdatasets import FullTraining, Market
 import torch.cuda as cutorch
 import yaml
 from tensorboardX import SummaryWriter

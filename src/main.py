@@ -1,5 +1,5 @@
-from .utils import *
-from .trainers import ReidTrainer
+from utils import *
+from trainers import ReidTrainer
 import time
 import torch.backends.cudnn as cudnn
 cudnn.benchmark = True

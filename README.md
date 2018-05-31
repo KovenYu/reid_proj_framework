@@ -21,6 +21,7 @@ run data/make_imdb_Market_debug.m for a mini version to speed up testing and deb
 #### running
 - if you run on gpu 0, type
 ```bash
+cd src
 python src/main.py --gpu 0 --save_path runs
 ```
 the second argument is the save_path where you wanna save logs and checkpoints.
