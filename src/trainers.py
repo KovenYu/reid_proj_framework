@@ -122,7 +122,7 @@ class ReidTrainer(Trainer):
         self.logger.print_log('  **Train**  ' + create_stat_string(meters_trn))
         self.logger.print_log('  **Test**  ' + create_stat_string(meters_val))
 
-        save_checkpoint(self, epoch, os.path.join(self.args.save_path, "checkpoints", "{:0>2d}.pth").format(epoch))
+        save_checkpoint(self, epoch, os.path.join(self.args.save_path, "checkpoints.pth"))
 
     def eval_performance(self, gallery_loader, probe_loader):
         stats = ('acc/r1', 'mAP')
