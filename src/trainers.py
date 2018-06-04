@@ -77,7 +77,7 @@ class ReidTrainer(Trainer):
 
         self.recorder = SummaryWriter(os.path.join(args.save_path, 'tb_logs'))
 
-    def train_epoch(self, train_loader, gallery_loader, probe_loader, epoch):
+    def train_epoch(self, train_loader, epoch):
         adjust_learning_rate(self.optimizer, (self.args.lr,), epoch, self.args.epochs, self.args.lr_strategy)
 
         batch_time_meter = AverageMeter()
@@ -115,16 +115,13 @@ class ReidTrainer(Trainer):
                 self.logger.print_log('  Iter: [{:03d}/{:03d}]   Freq {:.1f}   '.format(
                     i, len(train_loader), freq) + create_stat_string(meters_trn) + time_string())
 
-        meters_val = self.eval_performance(gallery_loader, probe_loader)
-        self.recorder.add_scalars("stats/acc_r1", {'train_acc': meters_trn['acc/r1'].avg,
-                                                   'eval_r1': meters_val['acc/r1'].avg}, epoch)
+        self.recorder.add_scalars("stats/acc_r1", {'train_acc': meters_trn['acc/r1'].avg}, epoch)
         self.recorder.add_scalar("loss/loss_cls", meters_trn['loss_cls'].avg, epoch)
-        self.logger.print_log('  **Train**  ' + create_stat_string(meters_trn))
-        self.logger.print_log('  **Test**  ' + create_stat_string(meters_val))
 
         save_checkpoint(self, epoch, os.path.join(self.args.save_path, "checkpoints.pth"))
+        return meters_trn
 
-    def eval_performance(self, gallery_loader, probe_loader):
+    def eval_performance(self, gallery_loader, probe_loader, epoch):
         stats = ('acc/r1', 'mAP')
         meters_val = {stat: AverageMeter() for stat in stats}
         self.eval()
@@ -138,4 +135,5 @@ class ReidTrainer(Trainer):
         rank1 = CMC[0]
         meters_val['acc/r1'].update(rank1, 1)
         meters_val['mAP'].update(MAP, 1)
+        self.recorder.add_scalars("stats/acc_r1", {'eval_r1': meters_val['acc/r1'].avg}, epoch)
         return meters_val

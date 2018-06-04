@@ -33,7 +33,10 @@ def main():
         logger.print_log(
             '\n==>>{:s} [Epoch={:03d}/{:03d}] {:s}'.format(time_string(), epoch, total_epoch, need_time))
 
-        trainer.train_epoch(train_loader, gallery_loader, probe_loader, epoch)
+        meters_trn = trainer.train_epoch(train_loader, epoch)
+        meters_val = trainer.eval_performance(gallery_loader, probe_loader, epoch)
+        logger.print_log('  **Train**  ' + create_stat_string(meters_trn))
+        logger.print_log('  **Test**  ' + create_stat_string(meters_val))
 
         epoch_time.update(time.time() - start_time)
         start_time = time.time()
