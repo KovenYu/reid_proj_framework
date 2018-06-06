@@ -126,10 +126,8 @@ class ReidTrainer(Trainer):
         meters_val = {stat: AverageMeter() for stat in stats}
         self.eval()
 
-        gallery_features, gallery_labels, gallery_views = extract_features(gallery_loader, self.net,
-                                                                           index_feature=0, require_views=True)
-        probe_features, probe_labels, probe_views = extract_features(probe_loader, self.net,
-                                                                     index_feature=0, require_views=True)
+        gallery_features, gallery_labels, gallery_views = extract_features(gallery_loader, self.net, index_feature=0)
+        probe_features, probe_labels, probe_views = extract_features(probe_loader, self.net, index_feature=0)
         dist = cdist(gallery_features, probe_features, metric='cosine')
         CMC, MAP = eval_cmc_map(dist, gallery_labels, probe_labels, gallery_views, probe_views)
         rank1 = CMC[0]

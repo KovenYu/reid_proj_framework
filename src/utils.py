@@ -83,50 +83,50 @@ def time_string():
     return string
 
 
-def extract_features(loader, model, index_feature=1, require_views=True):
+def extract_features(loader, model, index_feature=None):
     """
     extract features for the given loader using the given model
-    :param loader: must return (imgs, labels, views)
-    :param model: returns a tuple, containing the feature
-    :param index_feature: in the tuple returned by model, the index of the feature
-    :param require_views: if True, also return view information
-    :return: features, labels, (if required) views, all as n-by-d numpy array
+    if loader.dataset.require_views is False, the returned 'views' are empty.
+    :param loader: a ReIDDataset that has attribute require_views
+    :param model: returns a tuple containing the feature or only return the feature. if latter, index_feature be None
+    model can also be a tuple of nn.Module, indicating that the feature extraction is multi-stage.
+    in this case, index_feature should be a tuple of the same size.
+    :param index_feature: in the tuple returned by model, the index of the feature.
+    if the model only returns feature, this should be set to None.
+    :return: features, labels, views; feature is torch.float; labels and views are torch.long
+    ALL are in cpu().
     """
-    # switch to evaluate mode
-    model.eval()
+    if type(model) is not tuple:
+        models = (model,)
+        indices_feature = (index_feature,)
+    else:
+        assert len(model) == len(index_feature)
+        models = model
+        indices_feature = index_feature
+    for m in models:
+        m.eval()
 
-    labels = torch.zeros((len(loader.dataset),), dtype=torch.long)
-    views = torch.zeros((len(loader.dataset),), dtype=torch.long)
+    labels = torch.tensor([], dtype=torch.long)
+    views = torch.tensor([], dtype=torch.long)
+    features = torch.tensor([], dtype=torch.float)
 
-    idx = 0
-    assert loader.dataset.require_views == require_views, 'require_views not consistent in loader and specified option'
+    require_views = loader.dataset.require_views
     for i, data in enumerate(loader):
         imgs = data[0].cuda()
         label_batch = data[1]
-        with torch.no_grad():
-            output_tuple = model(imgs)
-        feature_batch = output_tuple[index_feature]
-        feature_batch = feature_batch.data.cpu()
+        inputs = imgs
+        for m, feat_idx in zip(models, indices_feature):
+            output_tuple = m(inputs)
+            feature_batch = output_tuple if feat_idx is None else output_tuple[feat_idx]
+            inputs = feature_batch
+        feature_batch = feature_batch.detach().cpu()
 
-        if i == 0:
-            feature_dim = feature_batch.shape[1]
-            features = torch.zeros((len(loader.dataset), feature_dim))
-
-        batch_size = label_batch.shape[0]
-        features[idx: idx + batch_size, :] = feature_batch
-        labels[idx: idx + batch_size] = label_batch
+        features = torch.cat((features, feature_batch), dim=0)
+        labels = torch.cat((labels, label_batch), dim=0)
         if require_views:
             view_batch = data[2]
-            views[idx: idx + batch_size] = view_batch
-        idx += batch_size
-
-    features_np = features.numpy()
-    labels_np = labels.numpy()
-    views_np = views.numpy()
-    if require_views:
-        return features_np, labels_np, views_np
-    else:
-        return features_np, labels_np
+            views = torch.cat((views, view_batch), dim=0)
+    return features, labels, views
 
 
 def create_stat_string(meters):
@@ -478,6 +478,25 @@ def get_reid_dataloaders(args):
                                                num_workers=10, pin_memory=True)
 
     return train_loader, gallery_loader, probe_loader
+
+
+def compare_grad(params, losses, recorder, step):
+    """
+    compare gradient magnitudes of several losses, using a tensorboard histogram
+    :param params: dict of parameters to observe
+    :param losses: dict of losses to observe
+    :param recorder: tensorboardX.SummaryWriter
+    :param step: global step
+    :return:
+    """
+    for param_name in params:
+        param = params[param_name]
+        for loss_name in losses:
+            loss = losses[loss_name]
+            grad = torch.autograd.grad(loss, param, grad_outputs=torch.tensor(1.0).cuda(), retain_graph=True,
+                                       allow_unused=True)[0]
+            if grad is not None:
+                recorder.add_histogram("{}_{}".format(param_name, loss_name), grad, step, bins='auto')
 
 
 def test():
