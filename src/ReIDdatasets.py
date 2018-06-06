@@ -89,10 +89,11 @@ class Market(data.Dataset):
 
 
 class FullTraining(data.Dataset):
-    def __init__(self, root, transform=None):
+    def __init__(self, root, transform=None, require_views=False):
         super(FullTraining, self).__init__()
         self.root = root
         self.transform = transform
+        self.require_views = require_views
         if self.transform is not None:
             self.on_transform = True
         else:
@@ -146,6 +147,7 @@ def main():
     img, label = Market_dataset[0]
     plt.imshow(img)
     plt.show()
+
 
 if __name__ == '__main__':
     main()
