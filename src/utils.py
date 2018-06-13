@@ -116,7 +116,8 @@ def extract_features(loader, model, index_feature=None):
         label_batch = data[1]
         inputs = imgs
         for m, feat_idx in zip(models, indices_feature):
-            output_tuple = m(inputs)
+            with torch.no_grad():
+                output_tuple = m(inputs)
             feature_batch = output_tuple if feat_idx is None else output_tuple[feat_idx]
             inputs = feature_batch
         feature_batch = feature_batch.detach().cpu()

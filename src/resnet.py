@@ -181,17 +181,9 @@ def make_cascade_blocks(in_channels, n, norm='batch'):
     return cascade_blocks
 
 
-def make_varychannel_blocks(in_channels, n, vary):
+def make_varychannel_resblk(chs):
     layers = []
-    for i in range(n):
-        if vary == 'down':
-            in_ch = int(in_channels / (2 ** i))
-            out_ch = int(in_ch / 2)
-        elif vary == 'up':
-            in_ch = int(in_channels * (2 ** i))
-            out_ch = int(in_ch * 2)
-        else:
-            assert False, 'vary should be up or down'
+    for in_ch, out_ch in zip(chs[:-1], chs[1:]):
         residual_transform = nn.Sequential(nn.Conv2d(in_ch, out_ch, kernel_size=1, stride=1, bias=False),
                                            nn.BatchNorm2d(out_ch))
         layers.append(ResNetBasicblock(in_ch, out_ch, stride=1, residual_transform=residual_transform))
