@@ -5,6 +5,8 @@ import subprocess
 import torch
 import argparse
 import torchvision.transforms as transforms
+import torchvision
+from random import sample
 matplotlib.use('agg')
 from ReIDdatasets import FullTraining, Market
 import torch.cuda as cutorch
@@ -498,6 +500,124 @@ def compare_grad(params, losses, recorder, step):
                                        allow_unused=True)[0]
             if grad is not None:
                 recorder.add_histogram("{}_{}".format(param_name, loss_name), grad, step, bins='auto')
+
+
+def find_wrong_match(dist, gallery_labels, probe_labels, gallery_views=None, probe_views=None):
+    """
+    find the probe samples which result in a wrong match at rank-1.
+    :param dist: 2-d np array, shape=(num_gallery, num_probe), distance matrix.
+    :param gallery_labels: np array, shape=(num_gallery,)
+    :param probe_labels:
+    :param gallery_views: np array, shape=(num_gallery,) if specified, for any probe image,
+    the gallery correct matches from the same view are ignored.
+    :param probe_views: must be specified if gallery_views are specified.
+    :return:
+    prb_idx: list of int, length == n_found_wrong_prb
+    gal_idx: list of np array, each of which associating with the element in prb_idx
+    correct_indicators: list of np array corresponding to gal_idx, indicating whether that gal is a correct match.
+    """
+    is_view_sensitive = False
+    num_probe = probe_labels.shape[0]
+    if gallery_views is not None or probe_views is not None:
+        assert gallery_views is not None and probe_views is not None, \
+            'gallery_views and probe_views must be specified together. \n'
+        is_view_sensitive = True
+    prb_idx = []
+    gal_idx = []
+    correct_indicators = []
+
+    for i in range(num_probe):
+        dist_ = dist[:, i]
+        probe_label = probe_labels[i]
+        gallery_labels_ = gallery_labels
+        if is_view_sensitive:
+            probe_view = probe_views[i]
+            is_from_same_view = gallery_views == probe_view
+            is_correct = gallery_labels == probe_label
+            should_be_excluded = is_from_same_view & is_correct
+            dist_ = dist_[~should_be_excluded]
+            gallery_labels_ = gallery_labels_[~should_be_excluded]
+        ranking_list = np.argsort(dist_)
+        inference_list = gallery_labels_[ranking_list]
+        positions_correct_tuple = np.nonzero(probe_label == inference_list)
+        positions_correct = positions_correct_tuple[0]
+        pos_first_correct = positions_correct[0]
+        if pos_first_correct != 0:
+            prb_idx.append(i)
+            gal_idx.append(ranking_list)
+            correct_indicators.append(probe_label == inference_list)
+
+    return prb_idx, gal_idx, correct_indicators
+
+
+def plot_ranking_imgs(gal_dataset, prb_dataset, gal_idx, prb_idx, n_gal=8, n_prb=8, size=(224, 224), save_path='',
+                      correct_indicators=None):
+    """
+    plot ranking imgs and save it.
+    :param gal_dataset: should support indexing and return a tuple, in which the first element is an img,
+           represented as np array
+    :param prb_dataset:
+    :param gal_idx: list of np.array, each of which corresponds to the element in prb_idx
+    :param prb_idx: list of int, indexing the prb_dataset
+    :param n_gal: number of gallery imgs shown in a row (for a probe).
+    :param n_prb: number of probe imgs shown, i.e. the number of rows. randomly chosen in the given list.
+    :param size: resize all shown imgs
+    :param save_path: directory to save; the file name is ranking_(time string).png
+    :param correct_indicators: list of np array corresponding to gal_idx, indicating whether that
+           gal is a correct match. if specified, each correct match will has a small green box in the upper-left.
+    :return:
+    """
+    assert len(prb_idx) == len(gal_idx)
+    if correct_indicators is not None:
+        assert len(prb_idx) == len(correct_indicators)
+    box_size = tuple(map(lambda x: int(x/12.0), size))
+
+    is_gal_on = gal_dataset.on_transform
+    is_prb_on = prb_dataset.on_transform
+    gal_dataset.turn_off_transform()
+    prb_dataset.turn_off_transform()
+
+    transform = transforms.Compose([transforms.Resize(size), transforms.ToTensor()])
+
+    n_prb = len(prb_idx) if n_prb > len(prb_idx) else n_prb
+    if correct_indicators is None:
+        used = sample(list(zip(prb_idx, gal_idx)), n_prb)
+        imgs = []
+        for p_idx, g_idx_array in used:
+            prb_img = transform(prb_dataset[p_idx][0])
+            imgs.append(prb_img)
+            n_gal_used = min(n_gal, len(g_idx_array))
+            for g_idx in g_idx_array[:n_gal_used]:
+                gal_img = transform(gal_dataset[g_idx][0])
+                imgs.append(gal_img)
+            for i in range(n_gal - n_gal_used):
+                imgs.append(np.zeros_like(prb_img))
+    else:
+        used = sample(list(zip(prb_idx, gal_idx, correct_indicators)), n_prb)
+        imgs = []
+        for p_idx, g_idx_array, correct_ind in used:
+            prb_img = transform(prb_dataset[p_idx][0])
+            imgs.append(prb_img)
+            n_gal_used = min(n_gal, len(g_idx_array))
+            for g_idx, is_correct_match in zip(g_idx_array[:n_gal_used], correct_ind[:n_gal_used]):
+                gal_img = transform(gal_dataset[g_idx][0])
+                if is_correct_match:
+                    gal_img[0, :box_size[0], :box_size[1]].zero_()
+                    gal_img[1, :box_size[0], :box_size[1]].fill_(1.0)
+                    gal_img[2, :box_size[0], :box_size[1]].zero_()
+                else:
+                    gal_img[0, :box_size[0], :box_size[1]].fill_(1.0)
+                    gal_img[1, :box_size[0], :box_size[1]].zero_()
+                    gal_img[2, :box_size[0], :box_size[1]].zero_()
+                imgs.append(gal_img)
+            for i in range(n_gal - n_gal_used):
+                imgs.append(np.zeros_like(prb_img))
+
+    filename = os.path.join(save_path, 'ranking_{}.png'.format(time_string()))
+    torchvision.utils.save_image(imgs, filename, nrow=n_gal+1)
+    print('saved ranking images into {}'.format(filename))
+    gal_dataset.on_transform = is_gal_on
+    prb_dataset.on_transform = is_prb_on
 
 
 def test():
