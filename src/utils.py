@@ -158,12 +158,18 @@ def eval_cmc_map(dist, gallery_labels, probe_labels, gallery_views=None, probe_v
     CMC: np array, shape=(num_gallery,). Measured by percentage
     MAP: np array, shape=(1,). Measured by percentage
     """
+    gallery_labels = np.asarray(gallery_labels)
+    probe_labels = np.asarray(probe_labels)
+    dist = np.asarray(dist)
+    
     is_view_sensitive = False
     num_gallery = gallery_labels.shape[0]
     num_probe = probe_labels.shape[0]
     if gallery_views is not None or probe_views is not None:
         assert gallery_views is not None and probe_views is not None, \
             'gallery_views and probe_views must be specified together. \n'
+        gallery_views = np.asarray(gallery_views)
+        probe_views = np.asarray(probe_views)
         is_view_sensitive = True
     cmc = np.zeros((num_gallery, num_probe))
     ap = np.zeros((num_probe,))
