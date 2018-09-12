@@ -11,7 +11,8 @@ def main():
     occupy_gpu_memory(args.gpu)
     logger = Logger(args.save_path)
     opts.print_options(logger)
-    train_loader, gallery_loader, probe_loader = get_reid_dataloaders(args)
+    train_loader, gallery_loader, probe_loader = get_reid_dataloaders(args.dataset, args.img_size, args.crop_size,
+                                                                      args.padding, args.batch_size)
     num_classes = train_loader.dataset.return_num_class()
 
     if args.resume:
