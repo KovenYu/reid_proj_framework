@@ -408,82 +408,78 @@ def partition_params(module, strategy, *desired_modules):
     return desired_params, other_params
 
 
-def get_transfer_dataloaders(args):
+def get_transfer_dataloaders(source, target, img_size, crop_size, padding, batch_size, use_source_stat=False):
     """
     get source/target/gallery/probe dataloaders, where
     source loader is FullTraining, others are Market.
-    :param args: using args.source, args.target, args.img_size, args.crop_size, args.padding, args.batch_size
-    args.use_source_stat: if True, using mean and std from source_data to normalize target/gal/prb data;
-    otherwise, using mean and std from target_data
     :return: the four dataloaders
     """
 
-    source_data = FullTraining('data/{}.mat'.format(args.source))
-    target_data = Market('data/{}.mat'.format(args.target), state='train')
-    gallery_data = Market('data/{}.mat'.format(args.target), state='gallery')
-    probe_data = Market('data/{}.mat'.format(args.target), state='probe')
+    source_data = FullTraining('data/{}.mat'.format(source))
+    target_data = Market('data/{}.mat'.format(target), state='train')
+    gallery_data = Market('data/{}.mat'.format(target), state='gallery')
+    probe_data = Market('data/{}.mat'.format(target), state='probe')
 
     mean = source_data.return_mean() / 255.0
     std = source_data.return_std() / 255.0
 
     source_transform = transforms.Compose(
-        [transforms.RandomHorizontalFlip(), transforms.Resize(args.img_size),
-         transforms.RandomCrop(args.crop_size, args.padding), transforms.ToTensor(), transforms.Normalize(mean, std)])
-    if not args.use_source_stat:
+        [transforms.RandomHorizontalFlip(), transforms.Resize(img_size),
+         transforms.RandomCrop(crop_size, padding), transforms.ToTensor(), transforms.Normalize(mean, std)])
+    if not use_source_stat:
         mean = target_data.return_mean() / 255.0
         std = target_data.return_mean() / 255.0
     target_transform = transforms.Compose(
-        [transforms.RandomHorizontalFlip(), transforms.Resize(args.img_size),
-         transforms.RandomCrop(args.crop_size, args.padding), transforms.ToTensor(), transforms.Normalize(mean, std)])
+        [transforms.RandomHorizontalFlip(), transforms.Resize(img_size),
+         transforms.RandomCrop(crop_size, padding), transforms.ToTensor(), transforms.Normalize(mean, std)])
     test_transform = transforms.Compose(
-        [transforms.Resize(args.img_size), transforms.ToTensor(), transforms.Normalize(mean, std)])
+        [transforms.Resize(img_size), transforms.ToTensor(), transforms.Normalize(mean, std)])
 
     source_data.turn_on_transform(transform=source_transform)
     target_data.turn_on_transform(transform=target_transform)
     gallery_data.turn_on_transform(transform=test_transform)
     probe_data.turn_on_transform(transform=test_transform)
 
-    source_loader = torch.utils.data.DataLoader(source_data, batch_size=args.batch_size, shuffle=True,
+    source_loader = torch.utils.data.DataLoader(source_data, batch_size=batch_size, shuffle=True,
                                                 num_workers=10, pin_memory=True, drop_last=True)
-    target_loader = torch.utils.data.DataLoader(target_data, batch_size=args.batch_size, shuffle=True,
+    target_loader = torch.utils.data.DataLoader(target_data, batch_size=batch_size, shuffle=True,
                                                 num_workers=10, pin_memory=True, drop_last=True)
-    gallery_loader = torch.utils.data.DataLoader(gallery_data, batch_size=args.batch_size, shuffle=False,
+    gallery_loader = torch.utils.data.DataLoader(gallery_data, batch_size=batch_size, shuffle=False,
                                                  num_workers=10, pin_memory=True)
-    probe_loader = torch.utils.data.DataLoader(probe_data, batch_size=args.batch_size, shuffle=False,
+    probe_loader = torch.utils.data.DataLoader(probe_data, batch_size=batch_size, shuffle=False,
                                                num_workers=10, pin_memory=True)
 
     return source_loader, target_loader, gallery_loader, probe_loader
 
 
-def get_reid_dataloaders(args):
+def get_reid_dataloaders(dataset, img_size, crop_size, padding, batch_size):
     """
     get train/gallery/probe dataloaders.
-    :param args: using args.dataset, args.img_size, args.crop_size, args.padding, args.batch_size
     :return:
     """
 
-    train_data = Market('data/{}.mat'.format(args.dataset), state='train')
-    gallery_data = Market('data/{}.mat'.format(args.dataset), state='gallery')
-    probe_data = Market('data/{}.mat'.format(args.dataset), state='probe')
+    train_data = Market('data/{}.mat'.format(dataset), state='train')
+    gallery_data = Market('data/{}.mat'.format(dataset), state='gallery')
+    probe_data = Market('data/{}.mat'.format(dataset), state='probe')
 
     mean = train_data.return_mean() / 255.0
     std = train_data.return_std() / 255.0
 
     train_transform = transforms.Compose(
-        [transforms.RandomHorizontalFlip(), transforms.Resize(args.img_size),
-         transforms.RandomCrop(args.crop_size, args.padding), transforms.ToTensor(), transforms.Normalize(mean, std)])
+        [transforms.RandomHorizontalFlip(), transforms.Resize(img_size),
+         transforms.RandomCrop(crop_size, padding), transforms.ToTensor(), transforms.Normalize(mean, std)])
     test_transform = transforms.Compose(
-        [transforms.Resize(args.img_size), transforms.ToTensor(), transforms.Normalize(mean, std)])
+        [transforms.Resize(img_size), transforms.ToTensor(), transforms.Normalize(mean, std)])
 
     train_data.turn_on_transform(transform=train_transform)
     gallery_data.turn_on_transform(transform=test_transform)
     probe_data.turn_on_transform(transform=test_transform)
 
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=args.batch_size, shuffle=True,
+    train_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True,
                                                num_workers=10, pin_memory=True, drop_last=True)
-    gallery_loader = torch.utils.data.DataLoader(gallery_data, batch_size=args.batch_size, shuffle=False,
+    gallery_loader = torch.utils.data.DataLoader(gallery_data, batch_size=batch_size, shuffle=False,
                                                  num_workers=10, pin_memory=True)
-    probe_loader = torch.utils.data.DataLoader(probe_data, batch_size=args.batch_size, shuffle=False,
+    probe_loader = torch.utils.data.DataLoader(probe_data, batch_size=batch_size, shuffle=False,
                                                num_workers=10, pin_memory=True)
 
     return train_loader, gallery_loader, probe_loader
