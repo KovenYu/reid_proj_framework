@@ -69,7 +69,10 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.dropout = nn.Dropout()
+        self.down_fc = nn.Linear(512 * block.expansion, 256, bias=False)
+        self.down_bn = nn.BatchNorm1d(256)
+        self.fc = nn.Linear(256, num_classes, bias=False)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -108,10 +111,17 @@ class ResNet(nn.Module):
         feature_maps = self.layer4(x)
 
         x = self.avgpool(feature_maps)
-        feature = x.view(x.size(0), -1)
-        x = self.fc(feature)
+        x = x.view(x.size(0), -1)
+        x = self.dropout(x)
+        feature = self.down_bn(self.down_fc(x))
 
-        return feature, x, feature_maps
+        w = self.fc.weight.t()
+        ww = w.renorm(2, 1, 1e-5).mul(1e5)
+        xlen = feature.pow(2).sum(1).pow(0.5)
+        wlen = ww.pow(2).sum(0).pow(0.5)
+        pred = feature.mm(ww) / xlen.view(-1, 1) / wlen.view(1, -1)
+
+        return feature, pred, feature_maps
 
 
 class ResNetBasicblock(nn.Module):

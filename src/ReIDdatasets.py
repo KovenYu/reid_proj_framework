@@ -110,10 +110,16 @@ class FullTraining(data.Dataset):
         self.labels = np.squeeze(temp.value)
 
     def return_mean(self, axis=(0, 1, 2)):
-        return np.mean(self.data, axis)
+        if 'MSMT17' in self.root:
+            return np.array([79.2386, 73.9793, 77.2493])
+        else:
+            return np.std(self.data, axis)
 
     def return_std(self, axis=(0, 1, 2)):
-        return np.std(self.data, axis)
+        if 'MSMT17' in self.root:
+            return np.array([67.2012, 63.9191, 61.8367])
+        else:
+            return np.std(self.data, axis)
 
     def return_num_class(self):
         return np.size(np.unique(self.labels))
@@ -142,11 +148,13 @@ class FullTraining(data.Dataset):
 
 
 def main():
-    Market_dataset = FullTraining('data/Market.mat')
-    print(Market_dataset.__len__())
-    img, label = Market_dataset[0]
-    plt.imshow(img)
-    plt.show()
+    MSMT = FullTraining('../data/MSMT17_V1_384_128.mat')
+    Mark = Market('../data/Market_384_128.mat')
+    s_mean = MSMT.return_mean()
+    s_std = MSMT.return_std()
+    t_mean = Mark.return_mean()
+    t_std = Mark.return_std()
+    pass
 
 
 if __name__ == '__main__':

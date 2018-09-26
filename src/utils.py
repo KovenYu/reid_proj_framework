@@ -240,29 +240,6 @@ def occupy_gpu_memory(gpu_id, maximum_usage=None, buffer_memory=2000):
         del x_
 
 
-def reset_state_dict(state_dict, model, *fixed_layers):
-    """
-    :param state_dict: to be modified
-    :param model: must be initialized
-    :param fixed_layers: must be in both state_dict and model.
-    :return:
-    """
-    for k in state_dict.keys():
-        for l in fixed_layers:
-            if k.startswith(l):
-                if k.endswith('bias'):
-                    state_dict[k] = model.__getattr__(l).bias.data
-                elif k.endswith('weight'):
-                    state_dict[k] = model.__getattr__(l).weight.data
-                elif k.endswith('running_mean'):
-                    state_dict[k] = model.__getattr__(l).running_mean
-                elif k.endswith('running_var'):
-                    state_dict[k] = model.__getattr__(l).running_var
-                else:
-                    assert False, 'Not specified param type: {}'.format(k)
-    return state_dict
-
-
 def save_checkpoint(trainer, epoch, save_path, is_best=False):
     logger = trainer.logger
     recorder = trainer.recorder
@@ -383,8 +360,8 @@ def partition_params(module, strategy, *desired_modules):
     :param strategy: choices are: ['bn', 'specified'].
     'bn': desired_params = bn_params
     'specified': desired_params = all params within desired_modules
-    :param desired_modules: tuple of strings, each corresponds to a specific module
-    :return: two iterators
+    :param desired_modules: strings, each corresponds to a specific module
+    :return: two lists
     """
     if strategy == 'bn':
         desired_params_set = set()
@@ -403,8 +380,8 @@ def partition_params(module, strategy, *desired_modules):
         assert False, 'unknown strategy: {}'.format(strategy)
     all_params_set = set(module.parameters())
     other_params_set = all_params_set.difference(desired_params_set)
-    desired_params = (p for p in desired_params_set)
-    other_params = (p for p in other_params_set)
+    desired_params = list(desired_params_set)
+    other_params = list(other_params_set)
     return desired_params, other_params
 
 
@@ -441,13 +418,13 @@ def get_transfer_dataloaders(source, target, img_size, crop_size, padding, batch
     probe_data.turn_on_transform(transform=test_transform)
 
     source_loader = torch.utils.data.DataLoader(source_data, batch_size=batch_size, shuffle=True,
-                                                num_workers=10, pin_memory=True, drop_last=True)
+                                                num_workers=2, pin_memory=True, drop_last=True)
     target_loader = torch.utils.data.DataLoader(target_data, batch_size=batch_size, shuffle=True,
-                                                num_workers=10, pin_memory=True, drop_last=True)
+                                                num_workers=2, pin_memory=True, drop_last=True)
     gallery_loader = torch.utils.data.DataLoader(gallery_data, batch_size=batch_size, shuffle=False,
-                                                 num_workers=10, pin_memory=True)
+                                                 num_workers=2, pin_memory=True)
     probe_loader = torch.utils.data.DataLoader(probe_data, batch_size=batch_size, shuffle=False,
-                                               num_workers=10, pin_memory=True)
+                                               num_workers=2, pin_memory=True)
 
     return source_loader, target_loader, gallery_loader, probe_loader
 
