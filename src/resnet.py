@@ -119,7 +119,8 @@ class ResNet(nn.Module):
         ww = w.renorm(2, 1, 1e-5).mul(1e5)
         xlen = feature.pow(2).sum(1).pow(0.5)
         wlen = ww.pow(2).sum(0).pow(0.5)
-        pred = feature.mm(ww) / xlen.view(-1, 1) / wlen.view(1, -1)
+        cos = feature.mm(ww) / xlen.view(-1, 1) / wlen.view(1, -1)
+        pred = cos * xlen.view(-1, 1)
 
         return feature, pred, feature_maps
 
